@@ -1,4 +1,4 @@
-#define DEBUG true
+#define DEBUG false
 
 #include <iostream>
 #include <vector>
@@ -248,9 +248,36 @@ void runCalc () {
     cout << "Answer: " << T.value << endl;
 }
 
-int main () {
-    while (RUNNING) {
-        runCalc();
+int main (int argc, char* argv[]) {
+    if (argc > 1) {
+        for (int i = 1; i < argc; i++) {
+            string f = argv[i];
+            if (f == "--help" || f == "-h") {
+                cout <<
+R"(
+Flags:
+    --help, -h
+        Opens this menu
+Calculator Functions:
+    Expressions:
+        Any math viable math expression can be evaluated
+        +,-,*,/ are all available
+        Parentheses () are available
+        Example:
+            5*(-4+3)
+            10(5-3)
+            3.141*5*5
+)"
+                    << endl;
+            }
+        }
+    } else {
+        cout << "Niko's Mathematical Expression Parser" << endl;
+        cout << "Use the --help flag for more information" << endl;
+
+        while (RUNNING) {
+            runCalc();
+        }
     }
     return 0;
 }
