@@ -1,4 +1,4 @@
-#define DEBUG false
+#define DEBUG true
 
 #include <iostream>
 #include <vector>
@@ -162,6 +162,7 @@ struct Term {
             Error = "There must be the same about of open and closing brackets";
             return;
         }
+        if (nested.size() > 0 && crnt.length() > 0) nested.push_back(Term(crnt));
 
 
     EvaluateExpression:
@@ -193,7 +194,7 @@ struct Term {
             return;
         }
         
-        if (nested.size() - ops.size() < 1) {
+        if (nested.size() - ops.size() > 1) {
             Error = format("There is a mismatch between terms and expressions in {}, with {} terms detected and {} operators",T,nested.size(),ops.size());
             return;
         }
