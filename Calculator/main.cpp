@@ -267,6 +267,9 @@ Calculator Functions:
             5*(-4+3)
             10(5-3)
             3.141*5*5
+    Functions:
+        exit, quit:
+            Exits the calculator
 )"
                     << endl;
             }
