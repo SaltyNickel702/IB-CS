@@ -5,8 +5,8 @@
 using namespace std;
 
 UI::UI (int width, int height) : scrn(height, vector<string>(width, " ")) {
-	dim[0] = width;
-	dim[1] = height;
+	dim.at(0) = width;
+	dim.at(1) = height;
 
 	for (int i = 0; i <= height; i++) cout << endl;
 
@@ -14,12 +14,12 @@ UI::UI (int width, int height) : scrn(height, vector<string>(width, " ")) {
 	display();
 }
 UI::Sprite::Sprite (int w, int h, int p) : priority(p), map(h, vector<ASCII>(w,' ')) {
-	dim[0] = w;
-	dim[1] = h;
+	dim.at(0) = w;
+	dim.at(1) = h;
 
 	linkedUI = nullptr;
-	pos[0] = 0;
-	pos[1] = 0;
+	pos.at(0) = 0;
+	pos.at(1) = 0;
 }
 void UI::addSprite(Sprite* s) {
 	if (s->linkedUI) {
@@ -37,11 +37,12 @@ void UI::addSprite(Sprite* s) {
 	sprites.push_back(s);
 }
 
-void UI::Sprite::importFromString (string s) {
+void UI::Sprite::importFromString (string s, string cc) {
 	int cCount = 0;
-	for (int y = 0; y < dim[1]; y++) {
-		for (int x = 0; x < dim[0]; x++) {
-			map[y][x] = s.at(cCount);
+	for (int y = 0; y < dim.at(1); y++) {
+		for (int x = 0; x < dim.at(0); x++) {
+			ASCII a(s.at(cCount), cc);
+			map[y][x] = a;
 
 			cCount++;
 			if (cCount >= s.size()) return;
@@ -52,33 +53,34 @@ void UI::Sprite::importFromString (string s) {
 void UI::display () {
 	updateScrn();
 
-	std::cout << format("\033[{}A\033[0J",dim[1]+1);
+	cout << format("\033[{}A\033[0J",dim.at(1)+1);
 	string s = "";
-	for (int y = 0; y < dim[1]; y++) {
+	for (int y = 0; y < dim.at(1); y++) {
 		string ss;
-		for (int x = 0; x < dim[0]; x++) {
-			ss += scrn.at(y).at(x);
+		for (int x = 0; x < dim.at(0); x++) {
+			string px = scrn.at(y).at(x);
+			ss += px + "\033[0m";
 		}
 		s += ss + "\n";
 	}
-	cout << s << endl;
+	cout << s << "\033[0m" << endl;
 }
 
 void UI::updateScrn() {
 	for (vector<string> &v : scrn) {
-		for (string &c : v) c = fillChar;
+		for (string &s : v) s = fillChar;
 	}
 
 	for (Sprite* s : sprites) {
 		vector<vector<Sprite::ASCII>> &m = s->map;
 		for (int y0 = 0; y0 < m.size(); y0++) {
-			int y = y0 + s->pos[1];
-			if (y < 0 || y >= dim[1]) continue;
+			int y = y0 + s->pos.at(1);
+			if (y < 0 || y >= dim.at(1)) continue;
 
 			for (int x0 = 0; x0 < m.at(0).size(); x0++) {
-				int x = x0 + s->pos[0];
+				int x = x0 + s->pos.at(0);
 
-				if (x < 0 || x >= dim[0]) continue;
+				if (x < 0 || x >= dim.at(0)) continue;
 
 				Sprite::ASCII c = m.at(y0).at(x0);
 
