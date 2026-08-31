@@ -2,7 +2,7 @@
 #define GAME_H
 
 #include "UI.h"
-// #include "Player.h"
+#include "Player.h"
 #include <vector>
 #include <array>
 
@@ -24,16 +24,18 @@ struct Game {
     Game (int w, int h);
 
     void genWalls (int count, std::array<int,2> maxSize);
-
+    void randomizePlayers();
     void turn();
-    // Player* tagger;
 
-    private:
-        UI ui;
-        std::array<int,2> dim;
+    Player* tagger;
+    
+    std::vector<Player*> players;
+    std::vector<Wall*> walls;
+    
+    std::array<int,2> dim;
+    UI ui;
 
-        // std::vector<Player*> players;
-        std::vector<Wall*> walls;
+    ~Game ();
 };
 
 #endif

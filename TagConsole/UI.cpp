@@ -2,6 +2,13 @@
 #include <format>
 #include <algorithm>
 
+#if defined(_WIN32) || defined(_WIN64)
+	#include <conio.h>
+#elif defined(__APPLE__) || defined(__MACH__) || defined(__linux__)
+	#include <termios.h>
+	#include <unistd.h>
+#endif
+
 using namespace std;
 
 UI::UI (int width, int height) : scrn(height, vector<string>(width, " ")) {
@@ -88,4 +95,27 @@ void UI::updateScrn() {
 			}
 		}
 	}
+}
+
+char UI::getKeyInput () {
+	#if defined(_WIN32) || defined(_WIN64)
+		return _getch();
+	#elif defined(__APPLE__) || defined(__MACH__) || defined(__linux__)
+		auto setRawMode = [&](bool enable) {
+			static struct termios oldt, newt;
+			if (enable) {
+				tcgetattr(STDIN_FILENO, &oldt);
+				newt = oldt;
+				newt.c_lflag &= ~(ICANON | ECHO); // Disable canonical mode and local echo
+				tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+			} else {
+				tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+			}
+		} 
+
+		setRawMode(true);
+		char c = getchar();
+		setRawMode(false);
+		return c;
+	#endif
 }

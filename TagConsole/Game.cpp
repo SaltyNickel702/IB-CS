@@ -2,8 +2,13 @@
 #include <iostream>
 #include <cmath>
 #include <ctime>
+#include <map>
 
 using namespace std;
+
+namespace {
+    float distance (array<int,2> p1, array<int,2> p2) { return sqrt(pow(p2.at(0) - p1.at(0), 2) + pow(p2.at(1) - p1.at(1), 2)); };
+}
 
 Game::Wall::Wall (Game* g, std::array<int,2> P1, std::array<int,2> P2) : dim{abs(P2.at(0)-P1.at(0)), abs(P2.at(1)-P1.at(1))}, sprite(abs(P2.at(0)-P1.at(0)) + 1,abs(P2.at(1)-P1.at(1)) + 1) {    
     if (P1.at(0) > P2.at(0)) { p1 = P2; p2 = P1;   
@@ -53,19 +58,25 @@ bool Game::Wall::collides (array<int,2> p) {
     return false;
 }
 
-Game::Game (int w, int h) : ui(w,h), dim{w,h} {
+Game::Game (int w, int h) : ui(w,h), dim{w,h}, tagger(nullptr) {
+    //Create players
+    Player* p1 = new Player(this);
+    Player* p2 = new Player(this);
+    tagger = players.at(rand() % players.size());
+    cout << "Tagger: " << tagger->getName() << endl;
+    
     // Create border walls
-    // cout << "Generating Borders" << endl;
-    Wall _w1(this,array<int,2>{0,0},array<int,2>{w-1,0}); //Slightly oversize, doesn't matter
+    Wall _w1(this,array<int,2>{0,0},array<int,2>{w-1,0});
     Wall _w2(this,array<int,2>{w-1,0},array<int,2>{w-1,h-1});
     Wall _w3(this,array<int,2>{w-1,h-1},array<int,2>{0,h-1});
     Wall _w4(this,array<int,2>{0,h-1},array<int,2>{0,0});
 
-    // Wall* w1 = new Wall(this, array<int,2>{5,25}, array<int,2>{15,5});
+    // Generate Wall Maze
     srand(time(0));
-
-    cout << "Generating Walls" << endl;
     genWalls(20, array<int,2>{20,7}); //rand() % 3 + 2
+
+    
+    randomizePlayers();
 
     ui.display();
 }
@@ -91,4 +102,59 @@ void Game::genWalls (int count, array<int,2> size) {
         // cout << "Construct:" << endl;
         walls.push_back(new Wall(this, sPos, array<int,2>{sPos.at(0) + rSize.at(0), sPos.at(1) + rSize.at(1)}));
     }
+}
+void Game::turn () {
+    bool reset = false;
+    Player* taggedPlayer = nullptr;
+    for (Player* p : players) {
+        Restart:
+
+        if (p->getHealth() <= 0) continue;
+        char inp = UI::getKeyInput();
+        bool goodMove;
+        if (inp == 'w' || inp == 'i') { goodMove = p->move(Player::dir::u);
+        } else if (inp = 's' || inp == 'k') { goodMove = p->move(Player::dir::d);
+        } else if (inp = 'a' || inp == 'j') { goodMove = p->move(Player::dir::l);
+        } else if (inp = 'd' || inp == 'l') { goodMove = p->move(Player::dir::r);
+        } else { goto Restart; } // Does this work?
+
+        if (!goodMove) {
+            p->damage();
+        }
+
+        if (tagger != p) {
+            if (tagger->pos.at(0) == p->pos.at(0) || tagger->pos.at(1) == p->pos.at(1)) {
+                p->damage();
+                reset = true;
+                taggedPlayer = p;
+            } else {
+                p->increaseScore();
+            }
+        }
+    }
+    if (reset) {
+        tagger = taggedPlayer;
+        randomizePlayers();
+    }
+}
+void Game::randomizePlayers() {
+    auto findSpot = [&](Player* p) {
+        while (true) {
+            array<int,2> r = {rand() % (dim.at(0) - 2) + 1, rand() % (dim.at(1) - 2) + 1};
+            bool collides = false;
+            for (Wall* w : walls) if (w->collides(r)) collides = true;
+            if (tagger != p && distance(r,tagger->pos) < 2) collides = true; //Can't be next to another player
+
+            if (!collides) break;
+        }
+    };
+    findSpot(tagger); // Tagger First
+    for (Player* p : players) {
+        if (p != tagger) findSpot(p);
+    }
+}
+
+Game::~Game () {
+    for (Wall* w : walls) delete w;
+    for (Player* p : players) delete p;
 }

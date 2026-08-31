@@ -39,6 +39,8 @@ struct UI {
 			std::vector<std::vector<bool>> loc;
 	};
 
+	static char getKeyInput ();
+
 	void display();
 	void addSprite (Sprite* sprite);
 
