@@ -1,1 +1,1 @@
-g++ --std=c++20 Main.cpp UI.cpp Game.cpp -o out
+g++ --std=c++20 Main.cpp UI.cpp Game.cpp Player.cpp -o out

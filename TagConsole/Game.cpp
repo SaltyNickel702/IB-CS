@@ -3,6 +3,8 @@
 #include <cmath>
 #include <ctime>
 #include <map>
+#include <algorithm>
+#include <format>
 
 using namespace std;
 
@@ -77,8 +79,22 @@ Game::Game (int w, int h) : ui(w,h), dim{w,h}, tagger(nullptr) {
 
     
     randomizePlayers();
-
     ui.display();
+
+    auto getAlive = [&]() {
+        int alive = 0;
+        for (Player* p : players) if (p->getHealth() > 0) alive++;
+        return alive;
+    };
+    while (getAlive() > 1) {
+        bool brk = turn();
+        if (brk) break;
+    }
+
+    sort(players.begin(), players.end(), [](Player* p1, Player* p2) { return p1->getScore() > p2->getScore(); });
+
+    cout << "\nScores: " << endl;
+    for (Player* p : players) cout << format("1. {}\t{} Points\n",p->getName(), p->getScore());
 }
 void Game::genWalls (int count, array<int,2> size) {
     srand(time(0));
@@ -103,20 +119,38 @@ void Game::genWalls (int count, array<int,2> size) {
         walls.push_back(new Wall(this, sPos, array<int,2>{sPos.at(0) + rSize.at(0), sPos.at(1) + rSize.at(1)}));
     }
 }
-void Game::turn () {
+bool Game::turn () {
     bool reset = false;
     Player* taggedPlayer = nullptr;
+    int T = -1;
     for (Player* p : players) {
-        Restart:
-
+        T++;
         if (p->getHealth() <= 0) continue;
-        char inp = UI::getKeyInput();
-        bool goodMove;
-        if (inp == 'w' || inp == 'i') { goodMove = p->move(Player::dir::u);
-        } else if (inp = 's' || inp == 'k') { goodMove = p->move(Player::dir::d);
-        } else if (inp = 'a' || inp == 'j') { goodMove = p->move(Player::dir::l);
-        } else if (inp = 'd' || inp == 'l') { goodMove = p->move(Player::dir::r);
-        } else { goto Restart; } // Does this work?
+        
+        bool running = true;
+        bool goodMove = true;
+        array<array<char,4>,2> moveSet = {{
+            {'w','a','s','d'},
+            {'i','j','k','l'}
+        }};
+        while (running) {
+            char c = UI::getKeyInput();
+
+            array<char,4> curSet = moveSet.at(T);
+            if (c == curSet.at(0)) {
+                goodMove = p->move(Player::dir::u);
+                running = false;
+            } else if (c == curSet.at(1)) {
+                goodMove = p->move(Player::dir::l);
+                running = false;
+            } else if (c == curSet.at(2)) {
+                goodMove = p->move(Player::dir::d);
+                running = false;
+            } else if (c == curSet.at(3)) {
+                goodMove = p->move(Player::dir::r);
+                running = false;
+            }
+        }
 
         if (!goodMove) {
             p->damage();
@@ -131,11 +165,14 @@ void Game::turn () {
                 p->increaseScore();
             }
         }
+
+        ui.display();
     }
     if (reset) {
         tagger = taggedPlayer;
         randomizePlayers();
     }
+    return false;
 }
 void Game::randomizePlayers() {
     auto findSpot = [&](Player* p) {
@@ -145,12 +182,12 @@ void Game::randomizePlayers() {
             for (Wall* w : walls) if (w->collides(r)) collides = true;
             if (tagger != p && distance(r,tagger->pos) < 2) collides = true; //Can't be next to another player
 
-            if (!collides) break;
+            if (!collides) return r;
         }
     };
-    findSpot(tagger); // Tagger First
+    tagger->move(findSpot(tagger)); // Tagger First
     for (Player* p : players) {
-        if (p != tagger) findSpot(p);
+        if (p != tagger) p->move(findSpot(p));
     }
 }
 

@@ -2,7 +2,8 @@
 #define PLAYER_H
 
 #include "UI.h"
-#include "Game.h"
+// #include "Game.h"
+class Game;
 #include <string>
 #include <vector>
 #include <array>
@@ -13,6 +14,7 @@ struct Player {
     Player (Game* game);
 
     bool move (Player::dir direction); // good or bad move
+    bool move (std::array<int,2> position); // good or bad move
     void increaseScore ();
     void damage();
     

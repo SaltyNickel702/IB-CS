@@ -25,7 +25,7 @@ struct Game {
 
     void genWalls (int count, std::array<int,2> maxSize);
     void randomizePlayers();
-    void turn();
+    bool turn(); // Returns true to exit loop
 
     Player* tagger;
     

@@ -1,4 +1,5 @@
 #include "Player.h"
+#include "Game.h"
 #include <iostream>
 #include <algorithm>
 #include <format>
@@ -35,7 +36,7 @@ Player::Player(Game* g) : game(g), sprite(1,1,1) {
 		for (auto &[key,value] : colorMap) cout << key << "\t";
 		cout << endl << ": ";
 		getline(cin,s);
-		auto it = find(colorMap.begin(),colorMap.end(),s);
+		auto it = colorMap.find(s);
 		if (it == colorMap.end()) {
 			cout << s << " was not recognized." << endl;
 			continue;
@@ -56,8 +57,9 @@ Player::~Player() {
 }
 
 bool Player::move (dir d) {
-	if (health <= 0) return;
+	if (health <= 0) return false;
 	array<int,2> nPos = pos;
+	cout << name << ": ";
 	switch (d) {
 		case dir::u:
 			nPos.at(1)--;
@@ -76,6 +78,15 @@ bool Player::move (dir d) {
 		if (w->collides(nPos)) return false;
 	}
 	pos = nPos;
+	sprite.pos = nPos;
+	return true;
+}
+bool Player::move (array<int,2> p) {
+	for (Game::Wall *w : game->walls) {
+		if (w->collides(p)) return false;
+	}
+	pos = p;
+	sprite.pos = p;
 	return true;
 }
 void Player::increaseScore() {
