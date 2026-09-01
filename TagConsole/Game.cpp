@@ -51,12 +51,24 @@ Game::Wall::Wall (Game* g, std::array<int,2> P1, std::array<int,2> P2) : dim{abs
     sprite.link(g->ui);
 }
 bool Game::Wall::collides (array<int,2> p) {
-    //check bounds before math
-    if (p.at(0) < p1.at(0) || p.at(0) > p2.at(0) || p.at(1) < min(p1.at(1),p2.at(1)) || p.at(1) > max(p1.at(1),p2.at(1))) return false;
+    if (p.at(0) < p1.at(0) || p.at(0) > p2.at(0) || 
+        p.at(1) < min(p1.at(1), p2.at(1)) || p.at(1) > max(p1.at(1), p2.at(1))) {
+        return false;
+    }
+
+    bool negM = (p2.at(1) < p1.at(1));
+    array<int,2> pTransl = {
+        p.at(0) - p1.at(0),
+        negM ? (min(p1.at(1), p2.at(1)) + dim.at(1) - p.at(1))
+             : (p.at(1) - min(p1.at(1), p2.at(1)))
+    };
 
     for (array<int,2> o : pts) {
-        if (o.at(0) == p.at(0) && o.at(1) == p.at(1)) return true;
+        if (o.at(0) == pTransl.at(0) && o.at(1) == pTransl.at(1)) {
+            return true;
+        }
     }
+    
     return false;
 }
 
@@ -64,8 +76,7 @@ Game::Game (int w, int h) : ui(w,h), dim{w,h}, tagger(nullptr) {
     //Create players
     Player* p1 = new Player(this);
     Player* p2 = new Player(this);
-    tagger = players.at(rand() % players.size());
-    cout << "Tagger: " << tagger->getName() << endl;
+    tagger = p1;
     
     // Create border walls
     Wall _w1(this,array<int,2>{0,0},array<int,2>{w-1,0});
