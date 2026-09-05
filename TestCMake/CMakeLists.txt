@@ -8,6 +8,8 @@ project(Test
 	LANGUAGES CXX
 )
 
+set(EXE_NAME "out")
+
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "..")
 
 set(CMAKE_CXX_STANDARD 20)
@@ -16,6 +18,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "src/*.cpp")
 file(GLOB_RECURSE HEADERS CONFIGURE_DEPENDS "src/*.h")
 
-add_executable(out ${SOURCES} ${HEADERS})
+add_executable(${EXE_NAME} ${SOURCES} ${HEADERS})
 
-target_include_directories(out PRIVATE src)
+target_include_directories(${EXE_NAME} PRIVATE src)
