@@ -64,12 +64,12 @@ Game::Game (int w, int h) : render(w,h,"TAG"), scene("scene1",render), backgroun
 		};
 		for (Bounds b : border) {
 			Obstacle o(*this, b);
-			o.color = glm::vec3(0.33, 0.24, 0.13);
+			o.color = glm::vec3(0.28, 0.52, 0.85);
 			obstacles.push_back(o);
 			scene.addAsset(obstacles.back().mesh);
 		}
 
-		vector<Bounds> interiorLayout { // used ai to generate map layout
+		vector<Bounds> interiorLayout { // used Gemini 3.1 Extended to generate map layout
             // Central core to break cross-map sightlines
             Bounds(17.0f, 8.0f, 23.0f, 12.0f),
             
@@ -269,20 +269,21 @@ Game::Player::Player (Game& g) : game(g), movement(game.render), drawTick(game.r
 		Bounds curBounds = getBounds();
 
 		float gravity = -70;
-		glm::vec2 acc(0,gravity * (onWall ? .3 : 1));
+		glm::vec2 acc(0,0);
 
 		int mvDir = (glfwGetKey(game.render.window, movementKeys.at(1)) ? -1 : 0) + (glfwGetKey(game.render.window, movementKeys.at(3)) ? 1 : 0);
 		float trgtSpd = 12 * mvDir;
-		float trgtDT = .1;
+		float trgtDT = (grounded ? .1 : .3);
 		if (trgtSpd == 0) {
 			//friction
-			float coef = (grounded ? 20 : 5) * (vel.x < 0 ? 1 : (vel.x > 0 ? -1 : 0));
+			float coef = (grounded ? 35 : 15) * (vel.x < 0 ? 1 : (vel.x > 0 ? -1 : 0));
 			acc.x += coef; // 10 newton weight, arbitrary
 		} else {
 			if (vel.x == 0 || trgtSpd / vel.x < 0 || abs(vel.x) < abs(trgtSpd)) { //no vel, opposite directions or less than target
 				acc.x += trgtSpd / trgtDT;
 			}
 		}
+		acc.y += gravity * ((onWall && (acc.x / wallEjectSide < 0))? .03 : 1);
 
 		float jumpAcc = -.4*gravity;
 		if (glfwGetKey(game.render.window, movementKeys.at(0))) { // Up
