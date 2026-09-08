@@ -3,7 +3,9 @@
 using namespace std;
 
 int main () {
-	Game g(1000,500);
+	glm::vec2 res(1,.5f);
+	res*= 2000;
+	Game g(res.x,res.y);
 
 	thread* t = g.render.Thread;
 

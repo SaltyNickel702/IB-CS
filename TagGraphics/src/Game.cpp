@@ -23,12 +23,26 @@ Game::Game (int w, int h) : render(w,h,"TAG"), scene("scene1",render), backgroun
 	scrnDim = glm::vec2(w,h);
 	worldDim = glm::vec2(40,20); //2 : 1
 
-	camera.bottom = 0;
-	camera.left = 0;
-	camera.right = worldDim.x;
-	camera.top = worldDim.y;
-	camera.near = -1;
-	camera.far = 10;
+	#if GAME_CAM
+		camera.bottom = 0;
+		camera.left = 0;
+		camera.right = worldDim.x;
+		camera.top = worldDim.y;
+		camera.near = -1.0f;
+		camera.far = 100.0f;
+	#else
+		camera.pos = glm::vec3(-10, worldDim.y / 2, -20);
+
+		camera.rot = glm::quatLookAtLH(
+			glm::normalize(glm::vec3(1,0,1)),
+			glm::vec3(0, 1, 0)
+		);
+
+		camera.fov = 70.0f;
+		camera.near = 0.1f;
+		camera.far = 100.0f;
+		camera.aspectRatio = 2.0f;
+	#endif
 
 	player1.movementKeys = array<int,4>{GLFW_KEY_W,GLFW_KEY_A,GLFW_KEY_S,GLFW_KEY_D};
 	player1.color = glm::vec3(0.196, 0.659, 0.322);
@@ -40,8 +54,8 @@ Game::Game (int w, int h) : render(w,h,"TAG"), scene("scene1",render), backgroun
 	shaders["rect"] = rectShader;
 	scene.addAsset(rectShader);
 
-	{
-		float borderHeight = 2;
+	{ // MARK: Map Creation
+		float borderHeight = 1.5;
 		vector<Bounds> border {
 			Bounds(0,0,borderHeight,worldDim.y),
 			Bounds(0,0,worldDim.x,borderHeight),
@@ -52,8 +66,34 @@ Game::Game (int w, int h) : render(w,h,"TAG"), scene("scene1",render), backgroun
 			Obstacle o(*this, b);
 			o.color = glm::vec3(0.33, 0.24, 0.13);
 			obstacles.push_back(o);
-			scene.addAsset(&obstacles.at(obstacles.size()-1));
+			scene.addAsset(obstacles.back().mesh);
 		}
+
+		vector<Bounds> interiorLayout { // used ai to generate map layout
+            // Central core to break cross-map sightlines
+            Bounds(17.0f, 8.0f, 23.0f, 12.0f),
+            
+            // Top and bottom choke points connecting to the border
+            Bounds(19.0f, borderHeight, 21.0f, 6.0f),
+            Bounds(19.0f, worldDim.y - 6.0f, 21.0f, worldDim.y - borderHeight),
+            
+            // Left and right flank cover walls
+            Bounds(8.0f, 6.0f, 10.0f, 14.0f),
+            Bounds(30.0f, 6.0f, 32.0f, 14.0f),
+            
+            // Corner safety pillars
+            Bounds(4.0f, 4.0f, 6.0f, 6.0f),
+            Bounds(4.0f, 14.0f, 6.0f, 16.0f),
+            Bounds(34.0f, 4.0f, 36.0f, 6.0f),
+            Bounds(34.0f, 14.0f, 36.0f, 16.0f)
+        };
+
+        for (Bounds b : interiorLayout) {
+            Obstacle o(*this, b);
+            o.color = glm::vec3(0.2118, 0.5333, 0.5412); 
+            obstacles.push_back(o);
+            scene.addAsset(obstacles.back().mesh); // .back() safely gets the element you just pushed
+        }
 	}
 
 	background.pos = glm::vec3(0,0,3);
@@ -72,7 +112,7 @@ Game::Game (int w, int h) : render(w,h,"TAG"), scene("scene1",render), backgroun
 	
 	scene.loadFunc = [&]() {
 		background.updateBuffer();
-		for (Obstacle& o : obstacles) o.mesh.updateBuffer();
+		for (Obstacle& o : obstacles) o.mesh->updateBuffer();
 		player1.mesh.updateBuffer();
 		player2.mesh.updateBuffer();
 	};
@@ -80,29 +120,41 @@ Game::Game (int w, int h) : render(w,h,"TAG"), scene("scene1",render), backgroun
 
 	drawTick.permanent.store(true);
 	drawTick.preferedPriority.store(0);
-	drawTick.f = [&]() {
-		if (glfwGetKey(render.window,GLFW_KEY_ESCAPE)) glfwWindowShouldClose(render.window);
+	drawTick.f = [&]() { // MARK: Map Rendering
+		if (glfwGetKey(render.window, GLFW_KEY_ESCAPE)) {
+			render.running.store(false);
+			return;
+		};
 
 		Render::Shader* s = shaders.at("rect");
 		Render::Camera& cam = camera;
 
 		glUseProgram(s->ID);
 		glEnable(GL_DEPTH_TEST);
+		// glDisable(GL_DEPTH_TEST);
+
+		glm::mat4 viewMat = glm::mat4(1.0f);
+		glm::mat4 screenMat = glm::orthoLH_NO(
+			0.0f, 40.0f,
+			0.0f, 20.0f,
+			-1.0f, 100.0f
+		);
 
 		glUniformMatrix4fv(glGetUniformLocation(s->ID, "viewMat"), 1, GL_FALSE, glm::value_ptr(cam.getTransform())); 
 		glUniformMatrix4fv(glGetUniformLocation(s->ID, "screenMat"), 1, GL_FALSE, glm::value_ptr(cam.getPerspective()));
 
-		auto draw = [&](Render::Mesh& mesh, glm::vec3 color) {
-			glUniformMatrix4fv(glGetUniformLocation(s->ID, "worldMat"), 1, GL_FALSE, glm::value_ptr(mesh.getTransform()));
+		auto draw = [&](Render::Mesh* mesh, glm::vec3 color) {
+			if (!mesh->isLoaded()) return;
+			glUniformMatrix4fv(glGetUniformLocation(s->ID, "worldMat"), 1, GL_FALSE, glm::value_ptr(mesh->getTransform()));
 			
 			glUniform3fv(glGetUniformLocation(s->ID, "color"),1,glm::value_ptr(color));
 
-			glBindVertexArray(mesh.VAO);
-			glDrawElements(GL_TRIANGLES, mesh.totalIndices(), GL_UNSIGNED_INT, 0);
-			glBindVertexArray(0);	
+			glBindVertexArray(mesh->VAO);
+			glDrawElements(GL_TRIANGLES, mesh->totalIndices(), GL_UNSIGNED_INT, 0);
+			glBindVertexArray(0);
 		};
 
-		draw(background,glm::vec3(0.5294, 0.8078, 0.9804));
+		draw(&background,glm::vec3(0.5294, 0.8078, 0.9804));
 
 		for (Obstacle& o : obstacles) {
 			draw(o.mesh,o.color);
@@ -122,18 +174,19 @@ void Game::respawnPlayers() {
 	player2.pos = glm::vec2(worldDim.x - offset.x - 1,offset.y);
 }
 
-Game::Obstacle::Obstacle (Game& g, Bounds b) : game(g), mesh(g.render), bounds(b) {
-	mesh.pos = glm::vec3(b.p1,2);
+Game::Obstacle::Obstacle (Game& g, Bounds b) : game(g), bounds(b) {
+	mesh = new Render::Mesh(g.render);
+	mesh->pos = glm::vec3(b.p1,2);
 	glm::vec2 dim = b.p2 - b.p1;
 	
-	mesh.vertexComp(vector<unsigned int>{2});
-	mesh.vertices(vector<float>{
+	mesh->vertexComp(vector<unsigned int>{2});
+	mesh->vertices(vector<float>{
 		0,0,
 		0,dim.y,
 		dim.x,dim.y,
 		dim.x,0
 	});
-	mesh.indices(vector<unsigned int>{
+	mesh->indices(vector<unsigned int>{
 		0,1,2,
 		0,2,3
 	});
@@ -210,19 +263,20 @@ Game::Player::Player (Game& g) : game(g), movement(game.render), drawTick(game.r
 
 	movement.preferedPriority.store(3);
 	movement.permanent.store(true);
-	movement.f = [&]() {
+	movement.f = [&]() { // MARK: Player Movement
 		if (!game.gameRunning) return;
 
 		Bounds curBounds = getBounds();
 
-		glm::vec2 acc(0,-9.81);
+		float gravity = -70;
+		glm::vec2 acc(0,gravity * (onWall ? .3 : 1));
 
 		int mvDir = (glfwGetKey(game.render.window, movementKeys.at(1)) ? -1 : 0) + (glfwGetKey(game.render.window, movementKeys.at(3)) ? 1 : 0);
-		float trgtSpd = 5 * mvDir;
-		float trgtDT = .3;
+		float trgtSpd = 12 * mvDir;
+		float trgtDT = .1;
 		if (trgtSpd == 0) {
 			//friction
-			float coef = (grounded ? .6 : .1) * (vel.x < 0 ? 1 : (vel.x > 0 ? -1 : 0));
+			float coef = (grounded ? 20 : 5) * (vel.x < 0 ? 1 : (vel.x > 0 ? -1 : 0));
 			acc.x += coef; // 10 newton weight, arbitrary
 		} else {
 			if (vel.x == 0 || trgtSpd / vel.x < 0 || abs(vel.x) < abs(trgtSpd)) { //no vel, opposite directions or less than target
@@ -230,13 +284,13 @@ Game::Player::Player (Game& g) : game(g), movement(game.render), drawTick(game.r
 			}
 		}
 
-		float jumpAcc = 5;
+		float jumpAcc = -.4*gravity;
 		if (glfwGetKey(game.render.window, movementKeys.at(0))) { // Up
 			if (grounded && !usedJump) {
-				acc.y+=jumpAcc;
+				vel.y = jumpAcc;
 				usedJump = true;
 			} else if (onWall && !usedWallJump) {
-				acc += glm::normalize(glm::vec2(wallEjectSide,1)) * jumpAcc;
+				vel = glm::normalize(glm::vec2(wallEjectSide,2)) * jumpAcc;
 				usedWallJump = true;
 			}
 		}
@@ -260,7 +314,6 @@ Game::Player::Player (Game& g) : game(g), movement(game.render), drawTick(game.r
 		Bounds xTest(curBounds);
 		xTest.translate(vel * (float)movement.dt());
 		bool collidesX = false;
-		onWall = false;
 		for (Obstacle& o : game.obstacles) {
 			if (o.bounds.collides(xTest)) { collidesX = true; break; }
 		}
@@ -269,7 +322,7 @@ Game::Player::Player (Game& g) : game(g), movement(game.render), drawTick(game.r
 			wallEjectSide = (vel.x > 0 ? -1 : 1);
 
 			vel.x = 0;
-		}
+		} else if (vel.x != 0) onWall = false;
 		if (!onWall) usedWallJump = false;
 
 		pos+= vel * (float)movement.dt();
@@ -278,7 +331,7 @@ Game::Player::Player (Game& g) : game(g), movement(game.render), drawTick(game.r
 
 	drawTick.preferedPriority.store(0);
 	drawTick.permanent.store(true);
-	drawTick.f = [&]() {
+	drawTick.f = [&]() { // MARK: Player Rendering
 		mesh.pos = glm::vec3(pos,0);
 
 		Render::Shader* s = game.shaders.at("rect");

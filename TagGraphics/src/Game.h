@@ -1,5 +1,7 @@
 #pragma once
 
+#define GAME_CAM true
+
 #include "Render.h"
 #include <array>
 
@@ -58,7 +60,7 @@ struct Game {
 
 	struct Obstacle {
 		Obstacle (Game& game, Bounds bounds);
-		Render::Mesh mesh;
+		Render::Mesh* mesh;
 		Game& game;
 		Bounds bounds;
 		glm::vec3 color;
@@ -74,7 +76,11 @@ struct Game {
 	glm::vec2 scrnDim;
 	glm::vec2 worldDim;
 
+	#if GAME_CAM
 	Render::Camera::Orthographic camera;
+	#else
+	Render::Camera::Perspective camera;
+	#endif
 	std::map<std::string,Render::Shader*> shaders;
 	Render::Mesh background;
 

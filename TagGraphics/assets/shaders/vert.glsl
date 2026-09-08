@@ -5,10 +5,11 @@ uniform mat4 worldMat;
 uniform mat4 viewMat;
 uniform mat4 screenMat;
 
-void main ()
+void main()
 {
-	vec4 world = worldMat * vec4(pos,0,1);
-	vec4 view = viewMat * world;
-	vec4 clip = screenMat * view;
-	gl_Position = clip;
+    vec4 world = (worldMat * vec4(pos, 0.0, 1.0)) * vec4(1,1,4,1);
+    vec4 view = viewMat * world;  // bypass camera
+    vec4 clip = screenMat * view;
+
+    gl_Position = clip;
 }

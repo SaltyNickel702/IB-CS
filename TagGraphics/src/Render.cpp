@@ -121,6 +121,8 @@ Render::Mesh::Mesh (Render& r) : Asset(r) {
 	attrL = 0;
 
 	scale = glm::vec3(1);
+	pos = glm::vec3(0);
+	rot = glm::quat(1, 0, 0, 0);
 }
 void Render::Mesh::updateBuffer() {
 	TickFunc* t = new TickFunc(render);
@@ -236,9 +238,9 @@ void Render::Mesh::vertexComp(vector<unsigned int> v) {
 glm::mat4 Render::Mesh::getTransform() {
 	glm::mat4 transl = glm::translate(glm::mat4(1.0f), pos);
 	glm::mat4 rotMat = glm::mat4_cast(rot);
-	glm::mat4 scaleMat = glm::scale(glm::mat4(1.0f),scale);
+	// glm::mat4 scaleMat = glm::scale(glm::mat4(1.0f),scale);
 
-	return transl * rotMat * scaleMat;
+	return transl * rotMat;// * scaleMat;
 }
 #pragma endregion
 
@@ -265,7 +267,7 @@ void Render::TickFunc::pull () {
 
 #pragma region Camera
 Render::Camera::Camera () {
-	rot = glm::quatLookAt(glm::vec3(0,0,1),glm::vec3(0,1,0));
+	rot = glm::quatLookAtLH(glm::vec3(0,0,1),glm::vec3(0,1,0));
 	pos = glm::vec3(0);
 }
 
@@ -280,10 +282,10 @@ glm::mat4 Render::Camera::getPerspective () {
 }
 
 glm::mat4 Render::Camera::Perspective::getPerspective () {
-	return glm::perspective(glm::radians(fov), aspectRatio, near, far);
+	return glm::perspectiveLH_NO(glm::radians(fov), aspectRatio, near, far);
 }
 glm::mat4 Render::Camera::Orthographic::getPerspective () {
-	return glm::ortho(left,right,bottom,top,near,far);
+	return glm::orthoLH_NO(left,right,bottom,top,near,far);
 }
 #pragma endregion
 
@@ -435,12 +437,12 @@ void Render::loop () {
 			deltaTick = currentTime - lastTime;
 		};
 		updateTime();
-		if (enableFrameLimiter.load() && fps() > frameLimit.load()) { // Might need to update this to be more precise
-			double targetDT = 1.0 / frameLimit.load();
-			double difMS = (targetDT - deltaTick) * 1000000;
-			this_thread::sleep_for(chrono::microseconds(static_cast<int>(difMS)));
-			updateTime();
-		}
+		// if (enableFrameLimiter.load() && fps() > frameLimit.load()) { // Might need to update this to be more precise
+		// 	double targetDT = 1.0 / frameLimit.load();
+		// 	double difMS = (targetDT - deltaTick) * 1000000;
+		// 	this_thread::sleep_for(chrono::microseconds(static_cast<int>(difMS)));
+		// 	updateTime();
+		// }
 
 		//Run all TickFunc
 		for (TickFunc* t : tickFunctions) {
