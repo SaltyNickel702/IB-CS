@@ -20,8 +20,8 @@ struct Character {
 		cout << format(
 R"(
 @ ({},{}):
-#
-#
+|/
+^
 )",pos.x,pos.y) << endl;
 	}
 
@@ -36,8 +36,8 @@ struct Ogre : public Character {
 		cout << format(
 R"(
 @ ({},{}):
-##
-##
+/##\
+ ##
 )",p.x,p.y) << endl;
 	};
 };
@@ -49,7 +49,7 @@ struct Mouse : public Character {
 		cout << format(
 R"(
 @ ({},{}):
-#
+-=>
 )",p.x,p.y) << endl;
 	};
 };
